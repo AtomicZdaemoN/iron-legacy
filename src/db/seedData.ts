@@ -241,7 +241,8 @@ export async function seedDatabase(): Promise<void> {
             defaultRestSeconds: 120,
             currentPlanId: 'plan-a',
             currentWeek: 1,
-            currentPhase: 1
+            currentPhase: 1,
+            theme: 'dark'
         });
     });
 

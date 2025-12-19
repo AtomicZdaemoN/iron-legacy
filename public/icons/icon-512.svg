@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0f0f0f"/>
+  <g fill="#d4a853">
+    <!-- Barbell bar -->
+    <rect x="56" y="236" width="400" height="40" rx="8"/>
+    <!-- Left weight plates -->
+    <rect x="40" y="176" width="50" height="160" rx="8"/>
+    <rect x="100" y="196" width="35" height="120" rx="6"/>
+    <!-- Right weight plates -->
+    <rect x="422" y="176" width="50" height="160" rx="8"/>
+    <rect x="377" y="196" width="35" height="120" rx="6"/>
+    <!-- Center grip lines -->
+    <rect x="216" y="240" width="80" height="8" rx="2" fill="#0f0f0f"/>
+    <rect x="216" y="252" width="80" height="8" rx="2" fill="#0f0f0f"/>
+    <rect x="216" y="264" width="80" height="8" rx="2" fill="#0f0f0f"/>
+  </g>
+</svg>

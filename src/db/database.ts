@@ -132,8 +132,15 @@ export async function getSettings(): Promise<UserSettings> {
             restTimerSound: true,
             defaultRestSeconds: 120,
             currentWeek: 1,
-            currentPhase: 1
+            currentPhase: 1,
+            theme: 'dark'
         };
+        await db.settings.put(settings);
+    }
+
+    // Ensure theme exists (migration for existing users)
+    if (!settings.theme) {
+        settings.theme = 'dark';
         await db.settings.put(settings);
     }
 

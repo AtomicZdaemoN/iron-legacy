@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, getSettings, updateSettings, clearAllData } from '../db/database';
 import type { ExportData } from '../db/schema';
 
-// Utility: Get phase from week (weeks 1-4 = phase 1, 5-8 = phase 2, 9-12 = phase 3)
+// Utility: Get phase from week
 function getPhaseFromWeek(week: number): number {
     if (week <= 4) return 1;
     if (week <= 8) return 2;
@@ -25,36 +25,31 @@ export default function Settings() {
     const [exportStatus, setExportStatus] = useState<string | null>(null);
     const [importStatus, setImportStatus] = useState<string | null>(null);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-    const plans = useLiveQuery(() => db.plans.toArray());
+    // Apply theme to document
+    useEffect(() => {
+        if (settings?.theme) {
+            document.documentElement.setAttribute('data-theme', settings.theme);
+        }
+    }, [settings?.theme]);
 
     // Calculate current phase from week
     const currentPhase = settings ? getPhaseFromWeek(settings.currentWeek) : 1;
 
-    const handleUnitChange = async (unit: 'kg' | 'lb') => {
-        await updateSettings({ displayUnits: unit });
-    };
-
-    const handlePlanChange = async (planId: string) => {
-        await updateSettings({ currentPlanId: planId });
+    const handleThemeChange = async (theme: 'dark' | 'light') => {
+        await updateSettings({ theme });
     };
 
     const handleWeekChange = async (week: number) => {
-        // Automatically update phase based on week
         const phase = getPhaseFromWeek(week);
         await updateSettings({ currentWeek: week, currentPhase: phase });
     };
 
     const handleAdvanceWeek = async () => {
         if (!settings) return;
-
         let nextWeek = settings.currentWeek + 1;
-
-        // After week 12, offer to restart with new cycle
-        if (nextWeek > 12) {
-            nextWeek = 1;
-        }
-
+        if (nextWeek > 12) nextWeek = 1;
         await handleWeekChange(nextWeek);
     };
 
@@ -68,10 +63,22 @@ export default function Settings() {
         }
     };
 
+    const handleClearHistory = async () => {
+        if (showClearConfirm) {
+            await db.sessions.clear();
+            await db.setLogs.clear();
+            await db.sessionExerciseNotes.clear();
+            await db.baselines.clear();
+            setShowClearConfirm(false);
+        } else {
+            setShowClearConfirm(true);
+            setTimeout(() => setShowClearConfirm(false), 3000);
+        }
+    };
+
     const handleExport = async () => {
         try {
             setExportStatus('Exporting...');
-
             const data: ExportData = {
                 version: 1,
                 exportedAt: new Date(),
@@ -111,7 +118,6 @@ export default function Settings() {
 
         try {
             setImportStatus('Importing...');
-
             const text = await file.text();
             const data: ExportData = JSON.parse(text);
 
@@ -119,10 +125,8 @@ export default function Settings() {
                 throw new Error('Unsupported backup version');
             }
 
-            // Clear existing data
             await clearAllData();
 
-            // Import all data
             await db.transaction('rw', db.tables, async () => {
                 if (data.programs.length) await db.programs.bulkAdd(data.programs);
                 if (data.plans.length) await db.plans.bulkAdd(data.plans);
@@ -144,44 +148,6 @@ export default function Settings() {
         }
     };
 
-    const handleExportCSV = async () => {
-        try {
-            setExportStatus('Exporting CSV...');
-
-            const setLogs = await db.setLogs.toArray();
-            const exercises = await db.exercises.toArray();
-            const exerciseMap = new Map(exercises.map(e => [e.id, e.name]));
-
-            const headers = ['Date', 'Exercise', 'Set', 'Type', 'Weight (kg)', 'Reps', 'RPE', 'Quality', 'Notes'];
-            const rows = setLogs.map(log => [
-                new Date(log.timestamp).toISOString(),
-                exerciseMap.get(log.exerciseId) ?? log.exerciseId,
-                log.setNumber,
-                log.setType,
-                log.weightKg,
-                log.reps,
-                log.rpe ?? '',
-                log.repQuality,
-                log.notes.replace(/,/g, ';')
-            ]);
-
-            const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `iron-legacy-sets-${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-
-            URL.revokeObjectURL(url);
-            setExportStatus('CSV exported! ✓');
-            setTimeout(() => setExportStatus(null), 3000);
-        } catch (err) {
-            setExportStatus('Export failed');
-        }
-    };
-
     if (!settings) {
         return (
             <div className="page">
@@ -196,11 +162,29 @@ export default function Settings() {
                 <h1 className="text-xl font-bold">Settings</h1>
             </header>
 
-            {/* Program Progress - Now with auto-phase calculation */}
+            {/* Theme */}
+            <section className="card mb-md">
+                <h3 className="card-title mb-md">Appearance</h3>
+                <div className="flex gap-sm">
+                    <button
+                        className={`btn flex-1 ${settings.theme === 'dark' ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => handleThemeChange('dark')}
+                    >
+                        🌙 Dark
+                    </button>
+                    <button
+                        className={`btn flex-1 ${settings.theme === 'light' ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => handleThemeChange('light')}
+                    >
+                        ☀️ Light
+                    </button>
+                </div>
+            </section>
+
+            {/* Program Progress */}
             <section className="card mb-md">
                 <h3 className="card-title mb-md">Program Progress</h3>
 
-                {/* Current Status */}
                 <div className="flex items-center justify-between mb-md p-sm" style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
                     <div>
                         <p className="text-lg font-semibold text-accent">Week {settings.currentWeek}</p>
@@ -211,7 +195,6 @@ export default function Settings() {
                     </button>
                 </div>
 
-                {/* Week Selector */}
                 <div className="mb-md">
                     <label className="input-label mb-xs" style={{ display: 'block' }}>Select Week</label>
                     <div className="flex gap-xs flex-wrap">
@@ -228,71 +211,31 @@ export default function Settings() {
                     </div>
                 </div>
 
-                {/* Phase Info */}
-                <div className="text-sm text-tertiary">
-                    <p>📅 Weeks 1-4: Phase 1 (12 reps) — Build volume</p>
-                    <p>📅 Weeks 5-8: Phase 2 (8 reps) — Increase intensity</p>
-                    <p>📅 Weeks 9-12: Phase 3 (5 reps) — Peak strength</p>
-                    <p className="mt-sm text-secondary">After week 12, restart at week 1 with increased weights!</p>
+                <div className="text-xs text-tertiary">
+                    <p>📅 Weeks 1-4: Phase 1 (12 reps)</p>
+                    <p>📅 Weeks 5-8: Phase 2 (8 reps)</p>
+                    <p>📅 Weeks 9-12: Phase 3 (5 reps)</p>
                 </div>
 
-                {/* Restart Button */}
                 <button
                     className={`btn btn-sm mt-md ${showResetConfirm ? 'btn-danger' : 'btn-ghost'}`}
                     onClick={handleRestartProgram}
                 >
-                    {showResetConfirm ? 'Confirm Reset to Week 1?' : 'Reset to Week 1'}
+                    {showResetConfirm ? 'Confirm Reset?' : 'Reset to Week 1'}
                 </button>
-            </section>
-
-            {/* Display Units */}
-            <section className="card mb-md">
-                <h3 className="card-title mb-md">Display Units</h3>
-                <div className="flex gap-sm">
-                    <button
-                        className={`btn ${settings.displayUnits === 'kg' ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => handleUnitChange('kg')}
-                    >
-                        Kilograms (kg)
-                    </button>
-                    <button
-                        className={`btn ${settings.displayUnits === 'lb' ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => handleUnitChange('lb')}
-                    >
-                        Pounds (lb)
-                    </button>
-                </div>
-            </section>
-
-            {/* Current Plan */}
-            <section className="card mb-md">
-                <h3 className="card-title mb-md">Current Plan</h3>
-                <select
-                    className="input w-full"
-                    value={settings.currentPlanId}
-                    onChange={e => handlePlanChange(e.target.value)}
-                >
-                    {plans?.map(plan => (
-                        <option key={plan.id} value={plan.id}>{plan.name}</option>
-                    ))}
-                </select>
             </section>
 
             {/* Data Management */}
             <section className="card mb-md">
-                <h3 className="card-title mb-md">Data Management</h3>
+                <h3 className="card-title mb-md">Data</h3>
 
                 <div className="flex flex-col gap-sm">
                     <button className="btn btn-secondary" onClick={handleExport}>
-                        📤 Export All Data (JSON)
-                    </button>
-
-                    <button className="btn btn-secondary" onClick={handleExportCSV}>
-                        📊 Export Set Logs (CSV)
+                        📤 Export Backup (JSON)
                     </button>
 
                     <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-                        📥 Import Data (JSON)
+                        📥 Import Backup
                         <input
                             type="file"
                             accept=".json"
@@ -300,30 +243,28 @@ export default function Settings() {
                             style={{ display: 'none' }}
                         />
                     </label>
+
+                    <button
+                        className={`btn ${showClearConfirm ? 'btn-danger' : 'btn-ghost'}`}
+                        onClick={handleClearHistory}
+                    >
+                        {showClearConfirm ? '⚠️ Confirm Clear All History?' : '🗑️ Clear Workout History'}
+                    </button>
                 </div>
 
-                {exportStatus && (
-                    <p className="text-sm mt-sm text-secondary">{exportStatus}</p>
-                )}
-                {importStatus && (
-                    <p className="text-sm mt-sm text-secondary">{importStatus}</p>
-                )}
+                {exportStatus && <p className="text-sm mt-sm text-secondary">{exportStatus}</p>}
+                {importStatus && <p className="text-sm mt-sm text-secondary">{importStatus}</p>}
             </section>
 
             {/* About */}
             <section className="card">
                 <h3 className="card-title mb-sm">About</h3>
                 <p className="text-lg font-semibold mb-xs">Iron Legacy</p>
-                <p className="text-sm text-secondary mb-sm">
-                    by Diego Leyva
-                </p>
+                <p className="text-sm text-secondary mb-sm">by Diego Leyva</p>
                 <p className="text-xs text-tertiary">
                     A personal workout tracker for strength & hypertrophy training.
-                    Built with React, TypeScript, Dexie, and ❤️
                 </p>
-                <p className="text-xs text-tertiary mt-sm">
-                    v1.0.0
-                </p>
+                <p className="text-xs text-tertiary mt-sm">v1.0.0</p>
             </section>
         </div>
     );

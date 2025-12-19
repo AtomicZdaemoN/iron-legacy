@@ -1,73 +1,81 @@
-# React + TypeScript + Vite
+# Iron Legacy 🏋️
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A personal workout tracker for strength & hypertrophy training.
 
-Currently, two official plugins are available:
+**[Live App →](https://atomiczdaemon.github.io/iron-legacy/)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 📱 **PWA** — Install on mobile, works offline
+- 💪 **Smart Progression** — 8 progression schemes with suggestions
+- ⏱️ **Rest Timer** — Auto-start with ±15s adjustments
+- 📊 **Dashboard** — Track volume and strength over time
+- 📋 **History** — View and edit past workouts
+- 📝 **Notes** — Add notes to sets, exercises, and sessions
+- 🌙 **Dark/Light Mode** — Switch themes
+- 💾 **Export/Import** — JSON backup for data portability
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **React 19** + **TypeScript**
+- **Vite** — Fast dev server and builds
+- **Dexie.js** — IndexedDB wrapper for local-first data
+- **Recharts** — Dashboard visualizations
+- **vite-plugin-pwa** — Service worker and manifest
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Getting Started
+
+```bash
+# Clone
+git clone https://github.com/AtomicZdaemoN/iron-legacy.git
+cd iron-legacy
+
+# Install
+npm install
+
+# Dev server
+npm run dev
+
+# Build
+npm run build
+
+# Deploy to GitHub Pages
+npm run deploy
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Project Structure
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+├── db/           # Database schema, migrations, backup
+├── engine/       # Progression algorithms
+├── pages/        # Route pages (Home, Workout, History, etc.)
+└── App.tsx       # Router and layout
+```
+
+---
+
+## Progression Schemes
+
+1. **Triple Progression** — Top set + backoff sets
+2. **Double Progression** — Add reps until max, then add weight
+3. **Dynamic Double** — Flexible rep ranges
+4. **Drop Sets** — Weight decreases per set
+5. **AMRAP** — As many reps as possible
+6. **Rest-Pause** — One extended set with pauses
+7. **Cluster Sets** — Intra-set rest
+8. **Pyramid** — Weight increases per set
+
+---
+
+## License
+
+MIT — Built by [Diego Leyva](https://github.com/AtomicZdaemoN)

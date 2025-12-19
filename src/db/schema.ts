@@ -161,7 +161,9 @@ export interface UserSettings {
     currentPlanId?: string;
     currentWeek: number;
     currentPhase: number; // 1, 2, or 3
+    theme: 'dark' | 'light'; // New: theme preference
 }
+
 
 // ============ Per-Exercise Session Notes ============
 

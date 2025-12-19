@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { db } from '../db/database';
 import { formatWeight } from '../engine/progression';
@@ -13,8 +13,9 @@ interface HistoryProps {
 export default function History({ settings }: HistoryProps) {
     const displayUnits = settings?.displayUnits ?? 'kg';
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const navigate = useNavigate();
 
-    // Query all sessions and filter completed ones
     const sessions = useLiveQuery(async () => {
         const allSessions = await db.sessions
             .orderBy('date')
@@ -40,6 +41,26 @@ export default function History({ settings }: HistoryProps) {
 
     const toggleExpand = (sessionId: string) => {
         setExpandedSessionId(prev => prev === sessionId ? null : sessionId);
+    };
+
+    const handleDelete = async (sessionId: string) => {
+        if (deleteConfirmId === sessionId) {
+            // Delete all related data
+            await db.transaction('rw', [db.sessions, db.setLogs, db.sessionExerciseNotes], async () => {
+                await db.setLogs.where('sessionId').equals(sessionId).delete();
+                await db.sessionExerciseNotes.where('sessionId').equals(sessionId).delete();
+                await db.sessions.delete(sessionId);
+            });
+            setDeleteConfirmId(null);
+        } else {
+            setDeleteConfirmId(sessionId);
+            setTimeout(() => setDeleteConfirmId(null), 3000);
+        }
+    };
+
+    const handleEdit = (sessionId: string, dayId: string) => {
+        // Navigate to workout page with session ID to edit
+        navigate(`/workout/${dayId}?edit=${sessionId}`);
     };
 
     return (
@@ -69,6 +90,9 @@ export default function History({ settings }: HistoryProps) {
                             displayUnits={displayUnits}
                             isExpanded={expandedSessionId === session.id}
                             onToggle={() => toggleExpand(session.id)}
+                            onEdit={() => handleEdit(session.id, session.dayId)}
+                            onDelete={() => handleDelete(session.id)}
+                            isDeleteConfirm={deleteConfirmId === session.id}
                         />
                     ))}
                 </div>
@@ -84,9 +108,12 @@ interface SessionCardProps {
     displayUnits: 'kg' | 'lb';
     isExpanded: boolean;
     onToggle: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
+    isDeleteConfirm: boolean;
 }
 
-function SessionCard({ session, day, exerciseMap, displayUnits, isExpanded, onToggle }: SessionCardProps) {
+function SessionCard({ session, day, exerciseMap, displayUnits, isExpanded, onToggle, onEdit, onDelete, isDeleteConfirm }: SessionCardProps) {
     const setLogs = useLiveQuery(
         () => db.setLogs.where('sessionId').equals(session.id).toArray(),
         [session.id]
@@ -148,6 +175,23 @@ function SessionCard({ session, day, exerciseMap, displayUnits, isExpanded, onTo
             {/* Expanded details */}
             {isExpanded && setLogs && (
                 <div className="mt-md pt-md" style={{ borderTop: '1px solid var(--border-color)' }}>
+                    {/* Action buttons */}
+                    <div className="flex gap-sm mb-md">
+                        <button
+                            className="btn btn-sm btn-secondary flex-1"
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        >
+                            ✏️ Edit Session
+                        </button>
+                        <button
+                            className={`btn btn-sm flex-1 ${isDeleteConfirm ? 'btn-danger' : 'btn-ghost'}`}
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        >
+                            {isDeleteConfirm ? '⚠️ Confirm Delete?' : '🗑️ Delete'}
+                        </button>
+                    </div>
+
+                    {/* Exercise details */}
                     {Array.from(setsByExercise.entries()).map(([exerciseId, sets]) => {
                         const exercise = exerciseMap.get(exerciseId);
                         const bestSet = sets.reduce((best, s) =>
@@ -165,7 +209,7 @@ function SessionCard({ session, day, exerciseMap, displayUnits, isExpanded, onTo
                         );
                     })}
 
-                    {/* Session note if exists */}
+                    {/* Session note */}
                     {session.notes && (
                         <div className="mt-md p-sm" style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
                             <span className="text-xs text-tertiary">Session Note:</span>
@@ -190,7 +234,6 @@ function ExerciseDetail({ exercise, sets, bestSet, displayUnits }: ExerciseDetai
 
     return (
         <div className="mb-sm">
-            {/* Exercise summary row */}
             <div
                 className="flex items-center justify-between p-sm cursor-pointer"
                 style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}
@@ -210,7 +253,6 @@ function ExerciseDetail({ exercise, sets, bestSet, displayUnits }: ExerciseDetai
                 </div>
             </div>
 
-            {/* Individual sets */}
             {showSets && (
                 <div className="pl-md mt-xs">
                     {sets.sort((a, b) => a.setNumber - b.setNumber).map(set => (
@@ -224,6 +266,7 @@ function ExerciseDetail({ exercise, sets, bestSet, displayUnits }: ExerciseDetai
                                 <span className={`badge badge-${set.setType === 'top' ? 'primary' : 'secondary'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
                                     {set.setType}
                                 </span>
+                                {set.notes && <span title={set.notes}>📝</span>}
                             </div>
                             <div className="flex items-center gap-md">
                                 <span>{formatWeight(set.weightKg, displayUnits)} × {set.reps}</span>

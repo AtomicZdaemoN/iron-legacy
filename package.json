@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://diegoleyva.github.io/iron-legacy",
+  "homepage": "https://atomiczdaemon.github.io/iron-legacy",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
